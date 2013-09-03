@@ -33,19 +33,14 @@ lsubstrate := Debug.o Hooker.o PosixMemory.o hde64c/src/hde64.c
 
 cycc = g++ -o$@ $(flags) $(filter %.o,$^) $(filter %.so,$^)
 
-all: darwin
+all: linux
 
-darwin: libsubstrate.so SubstrateBootstrap.so SubstrateLauncher.so SubstrateLoader.so cynject
-ios: darwin
-
-%.t.hpp: %.t.cpp trampoline.sh
-	./trampoline.sh $@ $*.so $* sed otool lipo nm ./cycc $(ios) $(mac) -o$*.so -- -shared $< -Iinclude -Xarch_armv6 -marm
+linux: libsubstrate.so
 
 PosixProtect.c: PosixProtect.defs PosixInterface.sh
 	./PosixInterface.sh $@ PosixProtect.h $<
 
 PosixMemory.o: PosixMemory.cpp
-DarwinInjector.o: Trampoline.t.hpp
 
 %.o: %.cpp
 	$(cycc) $(flags_$*) -c -Iinclude $<
@@ -56,46 +51,10 @@ DarwinInjector.o: Trampoline.t.hpp
 libsubstrate.so: $(lsubstrate)
 	$(cycc) -shared $(hde64c)
 
-SubstrateBootstrap.so: Bootstrap.o
-	$(cycc) -shared
-
-SubstrateLauncher.so: DarwinLauncher.o $(lsubstrate)
-	$(cycc) -shared $(hde64c)
-
-SubstrateLoader.so: DarwinLoader.o Environment.o
-	$(cycc) -shared -framework CoreFoundation
-
-cynject: cynject.o libsubstrate.so
-	$(cycc)
-	ldid -Stask_for_pid.xml $@
-
 %: %.o
 	$(cycc)
 
-extrainst_ postrm: LaunchDaemons.o Cydia.o
-
-deb: ios extrainst_ postrm
-	./package.sh i386
-	./package.sh arm
-
-package: deb
-
-install: deb
-	PATH=/Library/Cydia/bin:/usr/sbin:/usr/bin:/sbin:/bin sudo dpkg -i com.cydia.substrate_$(shell ./version.sh)_cydia.deb
-
-upgrade: all
-	sudo cp -a libsubstrate.so $(framework)/CydiaSubstrate
-	sudo cp -a SubstrateBootstrap.so $(framework)/Libraries
-	sudo cp -a SubstrateLauncher.so $(framework)/Libraries
-	sudo cp -a SubstrateLoader.so $(framework)/Libraries
-
 clean:
-	rm -f PosixProtect.h PosixProtect.c *.o libsubstrate.so SubstrateBootstrap.so SubstrateLauncher.so SubstrateLoader.so extrainst_ postrm cynject
+	rm -f PosixProtect.h PosixProtect.c *.o libsubstrate.so
 
-TestSuperCall: libsubstrate.so
-
-test: TestSuperCall
-	arch -i386 ./TestSuperCall
-	arch -x86_64 ./TestSuperCall
-
-.PHONY: all clean darwin deb install ios test package upgrade
+.PHONY: all clean linux

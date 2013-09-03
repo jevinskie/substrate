@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <stdint.h>
 
 extern "C" void __clear_cache (void *beg, void *end);
 

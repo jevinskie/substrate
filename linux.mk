@@ -29,7 +29,7 @@ flags_Hooker := -Ihde64c/include
 flags_PosixMessage := -Xarch_armv6 -marm
 
 hde64c := hde64c/src/hde64.c
-lsubstrate := Debug.o Hooker.o PosixMemory.o hde64c/src/hde64.c
+lsubstrate := Debug.o Hooker.o PosixMemory.o PosixFindSymbol.o hde64c/src/hde64.c
 
 cycc = g++ -o$@ $(flags) $(filter %.o,$^) $(filter %.so,$^)
 
@@ -41,6 +41,8 @@ PosixProtect.c: PosixProtect.defs PosixInterface.sh
 	./PosixInterface.sh $@ PosixProtect.h $<
 
 PosixMemory.o: PosixMemory.cpp
+
+PosixFindSymbol.o: PosixFindSymbol.cpp
 
 %.o: %.cpp
 	$(cycc) $(flags_$*) -c -Iinclude $<

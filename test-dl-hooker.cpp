@@ -23,5 +23,8 @@ void init(void) {
 	printf("hooker fact_sub = %p\n", fact);
 	void *fact2 = dlsym(handle, "fact");
 	printf("hooker fact = %p\n", fact2);
+	void *a_number_p = dlsym(handle, "a_number");
+	printf("a_number_p: %p\n", a_number_p);
+	*(int *)a_number_p = 1337;
 	MSHookFunction(fact, (void *)my_fact, (void **)&orig_fact);
 }

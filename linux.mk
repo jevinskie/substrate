@@ -18,7 +18,7 @@
 # }}}
 
 flags :=
-flags += -O2 -g0
+flags += -O0 -g
 
 flags += -isystem extra
 flags += -fno-exceptions

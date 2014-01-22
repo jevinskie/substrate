@@ -2,8 +2,8 @@
 
 all: test-hooker.so test-main test-dl-main test-dl-hooker.so libtest-dl-lib.so test-dl-substrate-main
 
-CC=gcc -g -Wall -Wextra
-CXX=g++ -g -Wall -Wextra
+CC=gcc -g -Wall -Wextra -std=c11
+CXX=g++ -g -Wall -Wextra -std=c++11
 
 test-main: test-main.c
 	$(CC) -o test-main -rdynamic -Wall -Wextra test-main.c -fPIE -pie
@@ -11,8 +11,8 @@ test-main: test-main.c
 test-dl-main: test-dl-main.c libtest-dl-lib.so
 	$(CC) -o test-dl-main -rdynamic -Wall -Wextra test-dl-main.c -fPIE -pie -L. -ltest-dl-lib
 
-test-dl-substrate-main: test-dl-substrate-main.c libtest-dl-lib.so
-	$(CC) -o test-dl-substrate-main -rdynamic -Wall -Wextra test-dl-substrate-main.c -fPIE -pie -L. -ltest-dl-lib -ldl -lelf
+test-dl-substrate-main: test-dl-substrate-main.cpp libtest-dl-lib.so
+	$(CXX) -o test-dl-substrate-main -rdynamic -Wall -Wextra test-dl-substrate-main.cpp -fPIE -pie -L. -ltest-dl-lib -ldl -lelf
 
 test-hooker.so: test-hooker.cpp
 	$(CXX) -o test-hooker.so -shared -Wall -Wextra test-hooker.cpp -ldl libsubstrate.so -fPIC

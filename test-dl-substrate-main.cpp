@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <dlfcn.h>
 #include <link.h>
 #include <stdio.h>
@@ -42,6 +41,45 @@ void memcpy_to_file(const char *path, void *ptr, size_t size)
     fclose(fp);
 }
 
+/*
+STT_NOTYPE 	0
+STT_OBJECT 	1
+STT_FUNC 	2
+STT_SECTION 3
+STT_FILE 	4
+STT_COMMON 	5
+STT_LOOS 	10
+STT_HIOS 	12
+STT_LOPROC 	13
+STT_HIPROC 	15
+*/
+const char *type_names[] = {
+	"STT_NOTYPE",	// 0
+	"STT_OBJECT",	// 1
+	"STT_FUNC",		// 2
+	"STT_SECTION",	// 3
+	"STT_FILE",		// 4
+	"STT_COMMON",	// 5
+	NULL, 			// 6
+	NULL, 			// 7
+	NULL, 			// 8
+	NULL, 			// 9
+	"STT_LOOS",		// 10
+	NULL, 			// 11
+	"STT_HIOS",		// 12
+	"STT_LOPROC",	// 13
+	NULL, 			// 14
+	"STT_HIPROC" 	// 15
+};
+
+void print_sym_type(int type) {
+	if (type_names[type]) {
+		printf("%s", type_names[type]);
+	} else {
+		printf("STT_%d", type);
+	}
+}
+
 void dump(const char *path) {
 	Elf *e;
 	Elf_Scn *scn = NULL;
@@ -51,7 +89,7 @@ void dump(const char *path) {
 	size_t sz;
 	void *elf;
 	Elf_Data *data;
-	GElf_Sym *sym;
+	GElf_Sym sym;
 
 	assert(elf = mmap_file(path, &sz));
 	assert(elf_version(EV_CURRENT) != EV_NONE);
@@ -61,12 +99,17 @@ void dump(const char *path) {
 	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		assert(gelf_getshdr(scn, &shdr));
 		assert(name = elf_strptr(e, shstrndx, shdr.sh_name));
-		if (!strcmp(name, ".symtab"))
+		if (strcmp(name, ".symtab"))
 			continue;
-		data = NULL;
-		while ((data = elf_getdata(scn, data)) != NULL) {
-
-		} 
+		printf("name: %s\n", name);
+		assert(data = elf_getdata(scn, NULL));
+		for (unsigned int i = 0; i < shdr.sh_size / shdr.sh_entsize; i++) {
+			assert(gelf_getsym(data, i, &sym));
+			printf("lol st_value: %u\n", sym.st_value);
+			printf("st_info: ");
+			print_sym_type(GELF_ST_TYPE(sym.st_info));
+			printf("\n");
+		}
 	}
 	return;
 }

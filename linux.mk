@@ -21,8 +21,10 @@ flags :=
 flags += -O0 -g
 
 flags += -isystem extra
-flags += -fno-exceptions
 flags += -fvisibility=hidden
+flags += -Wall -Wextra
+flags += -Wno-bitwise-op-parentheses
+flags += -Wno-unused-parameter
 flags += -fPIC
 
 flags_Hooker := -Ihde64c/include
@@ -31,7 +33,9 @@ flags_PosixMessage := -Xarch_armv6 -marm
 hde64c := hde64c/src/hde64.c
 lsubstrate := Debug.o Hooker.o PosixMemory.o PosixFindSymbol.o hde64c/src/hde64.c
 
-cycc = g++ -o$@ $(flags) $(filter %.o,$^) $(filter %.so,$^)
+cyxx = clang++ -std=c++11 -o$@ $(flags) $(filter %.o,$^) $(filter %.so,$^)
+cycc = clang -o$@ $(flags) $(filter %.o,$^) $(filter %.so,$^)
+
 
 all: linux
 
@@ -45,13 +49,13 @@ PosixMemory.o: PosixMemory.cpp
 PosixFindSymbol.o: PosixFindSymbol.cpp
 
 %.o: %.cpp
-	$(cycc) $(flags_$*) -c -Iinclude $<
+	$(cyxx) $(flags_$*) -c -Iinclude $<
 
 %.o: %.mm
 	$(cycc) $(flags_$*) -c -Iinclude $<
 
 libsubstrate.so: $(lsubstrate)
-	$(cycc) -shared $(hde64c)
+	$(cycc) -lelf -shared $(hde64c)
 
 %: %.o
 	$(cycc)

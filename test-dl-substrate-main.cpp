@@ -145,6 +145,7 @@ int main(void) {
 	assert(handle);
 	struct link_map *map;
 	int ret = dlinfo(handle, RTLD_DI_LINKMAP, &map);
+	dlclose(handle);
 	assert(!ret);
 	assert(map);
 

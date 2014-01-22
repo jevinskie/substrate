@@ -2,8 +2,8 @@
 
 all: test-hooker.so test-main test-dl-main test-dl-hooker.so libtest-dl-lib.so test-dl-substrate-main
 
-CC=gcc -g -Wall -Wextra -std=c11
-CXX=g++ -g -Wall -Wextra -std=c++11
+CC=clang -g -Wall -Wextra -std=c11
+CXX=clang++ -g -Wall -Wextra -std=c++11
 
 test-main: test-main.c
 	$(CC) -o test-main -rdynamic -Wall -Wextra test-main.c -fPIE -pie

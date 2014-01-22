@@ -26,25 +26,22 @@ int my_fact_static_sub(int n) {
 }
 
 __attribute__ ((constructor))
-void init(void) {
-	void *handle = dlopen(NULL, RTLD_NOW | RTLD_GLOBAL);
-	printf("hooker handle = %p\n", handle);
-	void *fact_sub = dlsym(handle, "fact_sub");
+void init_hooking(void) {
+	void *fact_sub = MSFindSymbol(NULL, "fact_sub");
 	printf("hooker fact_sub = %p\n", fact_sub);
-	void *fact = dlsym(handle, "fact");
+	void *fact = MSFindSymbol(NULL, "fact");
 	printf("hooker fact = %p\n", fact);
-	void *a_number_p = dlsym(handle, "a_number");
-	printf("a_number_p: %p\n", a_number_p);
-	*(int *)a_number_p = 1337;
+	void *a_number_p = MSFindSymbol(NULL, "a_number");
+	printf("hooker a_number_p: %p\n", a_number_p);
+	if (a_number_p)
+		*(int *)a_number_p = 1337;
 	MSHookFunction(fact_sub, (void *)my_fact_sub, (void **)&orig_fact_sub);
 
-	void *fact_static_sub = dlsym(handle, "fact_static_sub");
+	void *a_static_number_p = MSFindSymbol(NULL, "a_static_number");
+	printf("hooker a_static_number_p: %p\n", a_static_number_p);
+	void *fact_static_sub = MSFindSymbol(NULL, "fact_static_sub");
 	printf("hooker fact_static_sub = %p\n", fact_static_sub);
-	void *a_static_number_p = dlsym(handle, "a_static_number");
-	printf("a_static_number_p: %p\n", a_static_number_p);
 	if (a_static_number_p)
 		*(int *)a_static_number_p = 7;
 	MSHookFunction(fact_static_sub, (void *)my_fact_static_sub, (void **)&orig_fact_static_sub);
-
-	dlclose(handle);
 }

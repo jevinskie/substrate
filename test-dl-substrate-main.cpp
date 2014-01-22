@@ -22,8 +22,6 @@
 extern "C" int fact(int n);
 extern "C" int fact_static(int n);
 
-#define BRK  __asm__ volatile("int $0x03")
-
 void *mmap_file(std::string path, size_t *size) {
 	int fd;
     struct stat st;
@@ -38,14 +36,6 @@ void *mmap_file(std::string path, size_t *size) {
     if (size)
     	*size = st.st_size;
 	return ptr;
-}
-
-
-void memcpy_to_file(std::string path, void *ptr, size_t size)
-{
-    FILE *fp = fopen(path.c_str(), "wb");
-    fwrite(ptr, size, 1, fp);
-    fclose(fp);
 }
 
 std::map<int, std::string> sym_types {
@@ -140,10 +130,10 @@ void dump(std::string path, std::uint64_t base) {
 		}
 	}
 
+	munmap((void *)elf, sz);
+
 	return;
 }
-
-#if 1
 
 int main(void) {
 	std::cout << boost::format("fact = %1%\n") % (void *)fact;
@@ -175,15 +165,3 @@ int main(void) {
 
 	return 0;
 }
-
-#else
-
-int main(void) {
-	size_t size;
-	void *elf = mmap_file("/home/jevin/code/substrate/libtest-dl-lib.so", &size);
-	printf("size %zu\n", size);
-	dump(elf, size);
-	return 0;
-}
-
-#endif

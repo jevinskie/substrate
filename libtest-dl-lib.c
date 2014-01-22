@@ -18,13 +18,15 @@ static int fact_static_sub(int n) {
 }
 
 int fact(int n) {
-	printf("a_number_p %p\n", &a_number);
-	printf("a_number %d\n", a_number);
+	printf("libtest a_number_p %p\n", &a_number);
+	printf("libtest a_number %d\n", a_number);
+	printf("libtest fact_sub %p\n", fact_sub);
 	return fact_sub(n);
 }
 
 int fact_static(int n) {
-	printf("a_static_number_p %p\n", &a_static_number);
-	printf("a_static_number %d\n", a_static_number);
+	printf("libtest a_static_number_p %p\n", &a_static_number);
+	printf("libtest a_static_number %d\n", a_static_number);
+	printf("libtest fact_static_sub %p\n", fact_static_sub);
 	return fact_static_sub(n);
 }

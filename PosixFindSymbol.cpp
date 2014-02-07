@@ -36,6 +36,7 @@
 #include <map>
 #include <iterator>
 #include <vector>
+#include <boost/algorithm/string/predicate.hpp>
 
 void *mmap_file(std::string path, size_t *size) {
 	int fd;
@@ -70,7 +71,9 @@ _extern MSImageRef MSGetImageByName(const char *file) {
 		map = map->l_prev;
 
 	while (map) {
-		if (!strcmp(map->l_name, file))
+		//if (!strcmp(map->l_name, file))
+		//	return (MSImageRef)map;
+		if (boost::algorithm::ends_with(map->l_name, file))
 			return (MSImageRef)map;
 		map = map->l_next;
 	}
@@ -92,6 +95,9 @@ static void MSFindSymbolSub(MSImageRef image, std::set<std::string> &worklist, s
 	Elf_Data *data;
 	GElf_Sym sym;
 	struct link_map *map = (struct link_map *)image;
+
+	if (worklist.empty())
+		return;
 
 	assert(elf = (char *)mmap_file(map->l_name, &sz));
 	assert(elf_version(EV_CURRENT) != EV_NONE);
@@ -123,6 +129,9 @@ static void MSFindSymbolSub(MSImageRef image, std::set<std::string> &worklist, s
 			std::string sym_name {elf_strptr(e, strtab_idx, sym.st_name)};
 			if (worklist.find(sym_name) != worklist.end()) {
 				resolved_symbols[sym_name] = (void *)(map->l_addr + sym.st_value);
+				worklist.erase(sym_name);
+				if (worklist.empty())
+					goto done;
 			}
 		}
 	}
@@ -136,10 +145,14 @@ static void MSFindSymbolSub(MSImageRef image, std::set<std::string> &worklist, s
 			std::string sym_name {elf_strptr(e, dynstr_idx, sym.st_name)};
 			if (worklist.find(sym_name) != worklist.end()) {
 				resolved_symbols[sym_name] = (void *)(map->l_addr + sym.st_value);
+				worklist.erase(sym_name);
+				if (worklist.empty())
+					goto done;
 			}
 		}
 	}
 
+done:
 	munmap((void *)elf, sz);
 }
 

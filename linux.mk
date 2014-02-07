@@ -18,7 +18,7 @@
 # }}}
 
 flags :=
-flags += -O0 -g
+flags += -O3 -g
 
 flags += -isystem extra
 flags += -fvisibility=hidden

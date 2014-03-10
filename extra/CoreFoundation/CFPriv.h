@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -20,8 +20,9 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
 /*	CFPriv.h
-	Copyright (c) 1998-2007, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2013, Apple Inc. All rights reserved.
 */
 
 /*
@@ -36,24 +37,22 @@
 #include <CoreFoundation/CFArray.h>
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFURL.h>
-#include <CoreFoundation/CFBundlePriv.h>
+#include <CoreFoundation/CFLocale.h>
+#include <CoreFoundation/CFDate.h>
+#include <CoreFoundation/CFSet.h>
+#include <math.h>
 
 
-#if defined(__MACH__)
+
+#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE || TARGET_OS_LINUX)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
 #include <CoreFoundation/CFMachPort.h>
+#include <CoreFoundation/CFMessagePort.h>
 #endif
 
-#if defined(__MACH__) || defined(__WIN32__)
+#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE) || TARGET_OS_WIN32
 #include <CoreFoundation/CFRunLoop.h>
 #include <CoreFoundation/CFSocket.h>
-#endif
-
-#if defined(__MACH__)
-#include <CoreFoundation/CFMachPort.h>
-#endif
-
-#if 0
-#include <shlobj.h>
+#include <CoreFoundation/CFBundlePriv.h>
 #endif
 
 CF_EXTERN_C_BEGIN
@@ -67,31 +66,34 @@ CF_EXPORT const char **_CFGetProcessPath(void);
 CF_EXPORT const char **_CFGetProgname(void);
 
 
-#if defined(__MACH__)
+#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE || TARGET_OS_LINUX))
+CF_EXPORT void _CFRunLoopSetCurrent(CFRunLoopRef rl);
+#endif
+
+#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE || TARGET_OS_LINUX)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
 CF_EXPORT CFRunLoopRef CFRunLoopGetMain(void);
 CF_EXPORT SInt32 CFRunLoopRunSpecific(CFRunLoopRef rl, CFStringRef modeName, CFTimeInterval seconds, Boolean returnAfterSourceHandled);
 
-CF_EXPORT void _CFRunLoopSetCurrent(CFRunLoopRef rl);
 
-CF_EXPORT Boolean _CFRunLoopModeContainsMode(CFRunLoopRef rl, CFStringRef modeName, CFStringRef candidateContainedName);
-CF_EXPORT void _CFRunLoopAddModeToMode(CFRunLoopRef rl, CFStringRef modeName, CFStringRef toModeName);
-CF_EXPORT void _CFRunLoopRemoveModeFromMode(CFRunLoopRef rl, CFStringRef modeName, CFStringRef fromModeName);
 CF_EXPORT void _CFRunLoopStopMode(CFRunLoopRef rl, CFStringRef modeName);
 
-#if defined(__MACH__)
 CF_EXPORT CFIndex CFMachPortGetQueuedMessageCount(CFMachPortRef mp);
-#endif
 
 CF_EXPORT CFPropertyListRef _CFURLCopyPropertyListRepresentation(CFURLRef url);
-CF_EXPORT CFURLRef _CFURLCreateFromPropertyListRepresentation(CFAllocatorRef alloc, CFPropertyListRef pListRepresentation);
 #endif
 CF_EXPORT CFPropertyListRef _CFURLCopyPropertyListRepresentation(CFURLRef url);
 CF_EXPORT CFURLRef _CFURLCreateFromPropertyListRepresentation(CFAllocatorRef alloc, CFPropertyListRef pListRepresentation);
 
 CF_EXPORT void CFPreferencesFlushCaches(void);
 
+
+
+#if TARGET_OS_WIN32
+CF_EXPORT Boolean _CFURLGetWideFileSystemRepresentation(CFURLRef url, Boolean resolveAgainstBase, wchar_t *buffer, CFIndex bufferLength);
+#endif
+
 #if !__LP64__
-#if !defined(__WIN32__)
+#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
 struct FSSpec;
 CF_EXPORT
 Boolean _CFGetFSSpecFromURL(CFAllocatorRef alloc, CFURLRef url, struct FSSpec *spec);
@@ -101,13 +103,11 @@ CFURLRef _CFCreateURLFromFSSpec(CFAllocatorRef alloc, const struct FSSpec *voids
 #endif
 #endif
 
-#if MAC_OS_X_VERSION_10_2 <= MAC_OS_X_VERSION_MAX_ALLOWED
-enum {
+typedef CF_ENUM(CFIndex, CFURLComponentDecomposition) {
 	kCFURLComponentDecompositionNonHierarchical,
 	kCFURLComponentDecompositionRFC1808, /* use this for RFC 1738 decompositions as well */
 	kCFURLComponentDecompositionRFC2396
 };
-typedef CFIndex CFURLComponentDecomposition;
 
 typedef struct {
 	CFStringRef scheme;
@@ -150,7 +150,7 @@ CF_EXPORT
 CFURLRef _CFURLCreateFromComponents(CFAllocatorRef alloc, CFURLComponentDecomposition decompositionType, const void *components);
 #define CFURLCopyComponents _CFURLCopyComponents
 #define CFURLCreateFromComponents _CFURLCreateFromComponents
-#endif
+
 
 
 CF_EXPORT Boolean _CFStringGetFileSystemRepresentation(CFStringRef string, UInt8 *buffer, CFIndex maxBufLen);
@@ -159,16 +159,16 @@ CF_EXPORT Boolean _CFStringGetFileSystemRepresentation(CFStringRef string, UInt8
 CF_EXPORT CFStringRef _CFStringCreateWithBytesNoCopy(CFAllocatorRef alloc, const UInt8 *bytes, CFIndex numBytes, CFStringEncoding encoding, Boolean externalFormat, CFAllocatorRef contentsDeallocator);
 
 /* These return NULL on MacOS 8 */
+// This one leaks the returned string in order to be thread-safe.
+// CF cannot help you in this matter if you continue to use this SPI.
 CF_EXPORT
 CFStringRef CFGetUserName(void);
 
 CF_EXPORT
-CFURLRef CFCopyHomeDirectoryURLForUser(CFStringRef uName);	/* Pass NULL for the current user's home directory */
+CFStringRef CFCopyUserName(void);
 
-
-/* Extra user notification key for iPhone */
 CF_EXPORT
-const CFStringRef kCFUserNotificationKeyboardTypesKey AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER;
+CFURLRef CFCopyHomeDirectoryURLForUser(CFStringRef uName);	/* Pass NULL for the current user's home directory */
 
 
 /*
@@ -176,7 +176,7 @@ const CFStringRef kCFUserNotificationKeyboardTypesKey AVAILABLE_MAC_OS_X_VERSION
 	standard system directories where apps, resources, etc get
 	installed. Because queries can return multiple directories,
 	you get back a CFArray (which you should free when done) of
-	CFStrings. The directories are returned in search path order;
+	CFURLs. The directories are returned in search path order;
 	that is, the first place to look is returned first. This API
 	may return directories that do not exist yet. If NSUserDomain
 	is included in a query, then the results will contain "~" to
@@ -185,7 +185,7 @@ const CFStringRef kCFUserNotificationKeyboardTypesKey AVAILABLE_MAC_OS_X_VERSION
 	directories!
 	??? On MacOS 8 this function currently returns an empty array.
 */
-enum {
+typedef CF_ENUM(CFIndex, CFSearchPathDirectory) {
     kCFApplicationDirectory = 1,	/* supported applications (Applications) */
     kCFDemoApplicationDirectory,	/* unsupported applications, demonstration versions (Demos) */
     kCFDeveloperApplicationDirectory,	/* developer applications (Developer/Applications) */
@@ -195,22 +195,36 @@ enum {
     kCFUserDirectory,			/* user home directories (Users) */
     kCFDocumentationDirectory,		/* documentation (Documentation) */
     kCFDocumentDirectory,		/* documents (Library/Documents) */
+
+    kCFCoreServiceDirectory = 10,            // location of CoreServices directory (System/Library/CoreServices)
+    kCFAutosavedInformationDirectory = 11,   // location of autosaved documents (Documents/Autosaved)
+    kCFDesktopDirectory = 12,                // location of user's desktop
+    kCFCachesDirectory = 13,                 // location of discardable cache files (Library/Caches)
+    kCFApplicationSupportDirectory = 14,     // location of application support files (plug-ins, etc) (Library/Application Support)
+    kCFDownloadsDirectory = 15,              // location of the user's "Downloads" directory
+    kCFInputMethodsDirectory = 16,           // input methods (Library/Input Methods)
+    kCFMoviesDirectory = 17,                 // location of user's Movies directory (~/Movies)
+    kCFMusicDirectory = 18,                  // location of user's Music directory (~/Music)
+    kCFPicturesDirectory = 19,               // location of user's Pictures directory (~/Pictures)
+    kCFPrinterDescriptionDirectory = 20,     // location of system's PPDs directory (Library/Printers/PPDs)
+    kCFSharedPublicDirectory = 21,           // location of user's Public sharing directory (~/Public)
+    kCFPreferencePanesDirectory = 22,        // location of the PreferencePanes directory for use with System Preferences (Library/PreferencePanes)
+
     kCFAllApplicationsDirectory = 100,	/* all directories where applications can occur (ie Applications, Demos, Administration, Developer/Applications) */
     kCFAllLibrariesDirectory = 101	/* all directories where resources can occur (Library, Developer) */
 };
-typedef CFIndex CFSearchPathDirectory;
 
-enum {
+typedef CF_OPTIONS(CFOptionFlags, CFSearchPathDomainMask) {
     kCFUserDomainMask = 1,	/* user's home directory --- place to install user's personal items (~) */
     kCFLocalDomainMask = 2,	/* local to the current machine --- place to install items available to everyone on this machine (/Local) */
     kCFNetworkDomainMask = 4, 	/* publically available location in the local area network --- place to install items available on the network (/Network) */
     kCFSystemDomainMask = 8,	/* provided by Apple, unmodifiable (/System) */
     kCFAllDomainsMask = 0x0ffff	/* all domains: all of the above and more, future items */
 };
-typedef CFOptionFlags CFSearchPathDomainMask;
 
 CF_EXPORT
 CFArrayRef CFCopySearchPathForDirectoriesInDomains(CFSearchPathDirectory directory, CFSearchPathDomainMask domainMask, Boolean expandTilde);
+
 
 /* Obsolete keys */
 CF_EXPORT const CFStringRef kCFFileURLExists;
@@ -223,7 +237,7 @@ CF_EXPORT const CFStringRef kCFHTTPURLStatusLine;
 
 
 /* System Version file access */
-CF_EXPORT CFStringRef CFCopySystemVersionString(void);			// Human-readable string containing both marketing and build version, should be API'd
+CF_EXPORT CFStringRef CFCopySystemVersionString(void);			// Human-readable string containing both marketing and build version
 CF_EXPORT CFDictionaryRef _CFCopySystemVersionDictionary(void);
 CF_EXPORT CFDictionaryRef _CFCopyServerVersionDictionary(void);
 CF_EXPORT const CFStringRef _kCFSystemVersionProductNameKey;
@@ -244,49 +258,58 @@ CF_EXPORT void CFQSortArray(void *list, CFIndex count, CFIndex elementSize, CFCo
 
   Note that for non-MACH this function always returns true.
 */
-enum {
+typedef CF_ENUM(CFIndex, CFSystemVersion) {
     CFSystemVersionCheetah = 0,         /* 10.0 */
     CFSystemVersionPuma = 1,            /* 10.1 */
     CFSystemVersionJaguar = 2,          /* 10.2 */
     CFSystemVersionPanther = 3,         /* 10.3 */
-    CFSystemVersionPinot = 3,           /* Deprecated name for Panther */
     CFSystemVersionTiger = 4,           /* 10.4 */
-    CFSystemVersionMerlot = 4,          /* Deprecated name for Tiger */
-    CFSystemVersionLeopard = 5,         /* Post-Tiger */
-    CFSystemVersionChablis = 5,         /* Deprecated name for Leopard */
-    CFSystemVersionMax                  /* This should bump up when new entries are added */
+    CFSystemVersionLeopard = 5,         /* 10.5 */
+    CFSystemVersionSnowLeopard = 6,	/* 10.6 */
+    CFSystemVersionLion = 7,		/* 10.7 */
+    CFSystemVersionMountainLion = 8,    /* 10.8 */
+    CFSystemVersionMax,                 /* This should bump up when new entries are added */
+
 };
-typedef CFIndex CFSystemVersion;
 
 CF_EXPORT Boolean _CFExecutableLinkedOnOrAfter(CFSystemVersion version);
 
 
-enum {
+typedef CF_ENUM(CFIndex, CFStringCharacterClusterType) {
     kCFStringGraphemeCluster = 1, /* Unicode Grapheme Cluster */
     kCFStringComposedCharacterCluster = 2, /* Compose all non-base (including spacing marks) */
     kCFStringCursorMovementCluster = 3, /* Cluster suitable for cursor movements */
     kCFStringBackwardDeletionCluster = 4 /* Cluster suitable for backward deletion */
 };
-typedef CFIndex CFStringCharacterClusterType;
 
 CF_EXPORT CFRange CFStringGetRangeOfCharacterClusterAtIndex(CFStringRef string, CFIndex charIndex, CFStringCharacterClusterType type);
 
 // Compatibility kCFCompare flags. Use the new public kCFCompareDiacriticInsensitive
 enum {
-    kCFCompareDiacriticsInsensitive = 128, /* kCFCompareDiacriticInsensitive */
-    kCFCompareDiacriticsInsensitiveCompatibilityMask = ((1 << 28)|kCFCompareDiacriticsInsensitive),
+    kCFCompareDiacriticsInsensitive = 128 /* Use kCFCompareDiacriticInsensitive */
 };
+
+/* kCFCompare flags planned to be publicized (Aki 10/20/2008 Does not work with kCFCompareForceOrdering/CFStringFold). see <rdar://problem/6305147>)
+ */
+enum {
+    kCFCompareIgnoreNonAlphanumeric = (1UL << 16), // Ignores characters NOT in kCFCharacterSetAlphaNumeric
+};
+
 
 /* CFStringEncoding SPI */
 /* When set, CF encoding conversion engine keeps ASCII compatibility. (i.e. ASCII backslash <-> Unicode backslash in MacJapanese */
 CF_EXPORT void _CFStringEncodingSetForceASCIICompatibility(Boolean flag);
 
+extern void __CFSetCharToUniCharFunc(Boolean (*func)(UInt32 flags, UInt8 ch, UniChar *unicodeChar));
+extern UniChar __CFCharToUniCharTable[256];
+
+
 #if defined(CF_INLINE)
 CF_INLINE const UniChar *CFStringGetCharactersPtrFromInlineBuffer(CFStringInlineBuffer *buf, CFRange desiredRange) {
     if ((desiredRange.location < 0) || ((desiredRange.location + desiredRange.length) > buf->rangeToBuffer.length)) return NULL;
 
-    if (buf->directBuffer) {
-        return buf->directBuffer + buf->rangeToBuffer.location + desiredRange.location;
+    if (buf->directUniCharBuffer) {
+        return buf->directUniCharBuffer + buf->rangeToBuffer.location + desiredRange.location;
     } else {
         if (desiredRange.length > __kCFStringInlineBufferLength) return NULL;
 
@@ -294,7 +317,14 @@ CF_INLINE const UniChar *CFStringGetCharactersPtrFromInlineBuffer(CFStringInline
             buf->bufferedRangeStart = desiredRange.location;
             buf->bufferedRangeEnd = buf->bufferedRangeStart + __kCFStringInlineBufferLength;
             if (buf->bufferedRangeEnd > buf->rangeToBuffer.length) buf->bufferedRangeEnd = buf->rangeToBuffer.length;
-            CFStringGetCharacters(buf->theString, CFRangeMake(buf->rangeToBuffer.location + buf->bufferedRangeStart, buf->bufferedRangeEnd - buf->bufferedRangeStart), buf->buffer);
+            CFIndex location = buf->rangeToBuffer.location + buf->bufferedRangeStart;
+            CFIndex length = buf->bufferedRangeEnd - buf->bufferedRangeStart;
+            if (buf->directCStringBuffer) {
+                UniChar *bufPtr = buf->buffer;
+                while (length--) *bufPtr++ = (UniChar)buf->directCStringBuffer[location++];
+            } else {
+                CFStringGetCharacters(buf->theString, CFRangeMake(location, length), buf->buffer);
+            }
         }
 
         return buf->buffer + (desiredRange.location - buf->bufferedRangeStart);
@@ -302,8 +332,8 @@ CF_INLINE const UniChar *CFStringGetCharactersPtrFromInlineBuffer(CFStringInline
 }
 
 CF_INLINE void CFStringGetCharactersFromInlineBuffer(CFStringInlineBuffer *buf, CFRange desiredRange, UniChar *outBuf) {
-    if (buf->directBuffer) {
-        memmove(outBuf, buf->directBuffer + buf->rangeToBuffer.location + desiredRange.location, desiredRange.length * sizeof(UniChar));
+    if (buf->directUniCharBuffer) {
+        memmove(outBuf, buf->directUniCharBuffer + buf->rangeToBuffer.location + desiredRange.location, desiredRange.length * sizeof(UniChar));
     } else {
         if ((desiredRange.location >= buf->bufferedRangeStart) && (desiredRange.location < buf->bufferedRangeEnd)) {
             CFIndex bufLen = desiredRange.length;
@@ -321,16 +351,100 @@ CF_INLINE void CFStringGetCharactersFromInlineBuffer(CFStringInlineBuffer *buf, 
             }
         }
 
-        if (desiredRange.length > 0) CFStringGetCharacters(buf->theString, CFRangeMake(buf->rangeToBuffer.location + desiredRange.location, desiredRange.length), outBuf);
+        if (desiredRange.length > 0) {
+            CFIndex location = buf->rangeToBuffer.location + desiredRange.location;
+            CFIndex length = desiredRange.length;
+            if (buf->directCStringBuffer) {
+                UniChar *bufPtr = outBuf;
+                while (length--) *bufPtr++ = (UniChar)buf->directCStringBuffer[location++];
+            } else {
+                CFStringGetCharacters(buf->theString, CFRangeMake(location, length), outBuf);
+            }
+        }
     }
 }
 
 #else
-#define CFStringGetCharactersPtrFromInlineBuffer(buf, desiredRange) ((buf)->directBuffer ? (buf)->directBuffer + (buf)->rangeToBuffer.location + desiredRange.location : NULL)
+#define CFStringGetCharactersPtrFromInlineBuffer(buf, desiredRange) ((buf)->directUniCharBuffer ? (buf)->directUniCharBuffer + (buf)->rangeToBuffer.location + desiredRange.location : NULL)
 
 #define CFStringGetCharactersFromInlineBuffer(buf, desiredRange, outBuf) \
-    if (buf->directBuffer) memmove(outBuf, (buf)->directBuffer + (buf)->rangeToBuffer.location + desiredRange.location, desiredRange.length * sizeof(UniChar)); \
+    if (buf->directUniCharBuffer) memmove(outBuf, (buf)->directUniCharBuffer + (buf)->rangeToBuffer.location + desiredRange.location, desiredRange.length * sizeof(UniChar)); \
     else CFStringGetCharacters((buf)->theString, CFRangeMake((buf)->rangeToBuffer.location + desiredRange.location, desiredRange.length), outBuf);
+
+#endif /* CF_INLINE */
+
+
+#if defined(CF_INLINE)
+
+#ifndef __kCFStringAppendBufferLength
+    #define __kCFStringAppendBufferLength 1024
+#endif
+typedef struct {
+    UniChar buffer[__kCFStringAppendBufferLength];
+    CFIndex bufferIndex;
+    CFMutableStringRef theString;
+} CFStringAppendBuffer;
+
+
+// Initializes CFStringAppendBuffer with new mutable string.
+CF_INLINE void CFStringInitAppendBuffer(CFAllocatorRef alloc, CFStringAppendBuffer *buf)
+{
+    buf->bufferIndex = 0;
+    buf->theString = CFStringCreateMutable(alloc, 0);
+}
+
+// Appends the characters of a string to the CFStringAppendBuffer.
+CF_INLINE void CFStringAppendStringToAppendBuffer(CFStringAppendBuffer *buf, CFStringRef appendedString)
+{
+    CFIndex numChars = CFStringGetLength(appendedString);
+    if ( numChars > __kCFStringAppendBufferLength ) {
+        if ( buf->bufferIndex ) {
+            CFStringAppendCharacters(buf->theString, buf->buffer, buf->bufferIndex);
+            buf->bufferIndex = 0;
+        }
+        CFStringAppend(buf->theString, appendedString);
+    }
+    else {
+        if ( (buf->bufferIndex + numChars) > __kCFStringAppendBufferLength ) {
+            CFStringAppendCharacters(buf->theString, buf->buffer, buf->bufferIndex);
+            buf->bufferIndex = 0;
+        }
+        CFStringGetCharacters(appendedString, CFRangeMake(0, numChars), &buf->buffer[buf->bufferIndex]);
+        buf->bufferIndex += numChars;
+    }
+}
+
+// Appends a buffer of Unicode characters to the CFStringAppendBuffer.
+CF_INLINE void CFStringAppendCharactersToAppendBuffer(CFStringAppendBuffer *buf, const UniChar *chars, CFIndex numChars)
+{
+    if ( numChars > __kCFStringAppendBufferLength ) {
+        if ( buf->bufferIndex ) {
+            CFStringAppendCharacters(buf->theString, buf->buffer, buf->bufferIndex);
+            buf->bufferIndex = 0;
+        }
+        CFStringAppendCharacters(buf->theString, chars, numChars);
+    }
+    else {
+        if ( (buf->bufferIndex + numChars) > __kCFStringAppendBufferLength ) {
+            CFStringAppendCharacters(buf->theString, buf->buffer, buf->bufferIndex);
+            buf->bufferIndex = 0;
+        }
+        memcpy(&buf->buffer[buf->bufferIndex], chars, numChars * sizeof(UniChar));
+        buf->bufferIndex += numChars;
+    }
+}
+
+// Returns a mutable string from the CFStringAppendBuffer.
+CF_INLINE CFMutableStringRef CFStringCreateMutableWithAppendBuffer(CFStringAppendBuffer *buf)
+{
+    if ( buf->bufferIndex ) {
+        CFStringAppendCharacters(buf->theString, buf->buffer, buf->bufferIndex);
+        buf->bufferIndex = 0;
+    }
+    CFMutableStringRef result = buf->theString;
+    buf->theString = NULL;
+    return ( result );
+}
 
 #endif /* CF_INLINE */
 
@@ -359,9 +473,9 @@ typedef struct {
 
 // Bits for flags field
 enum {
-    kCFCharacterSetIsCompactBitmap = (1 << 0),
-    kCFCharacterSetNoBitmapAvailable = (1 << 1),
-    kCFCharacterSetIsInverted = (1 << 2)
+    kCFCharacterSetIsCompactBitmap = (1UL << 0),
+    kCFCharacterSetNoBitmapAvailable = (1UL << 1),
+    kCFCharacterSetIsInverted = (1UL << 2)
 };
 
 /*!
@@ -391,7 +505,7 @@ CF_INLINE bool CFCharacterSetInlineBufferIsLongCharacterMember(CFCharacterSetInl
         if (NULL == buffer->bitmap) {
             if (0 == (buffer->flags & kCFCharacterSetIsCompactBitmap)) isInverted = !isInverted;
         } else if (0 == (buffer->flags & kCFCharacterSetIsCompactBitmap)) {
-            if (buffer->bitmap[character >> 3] & (1 << (character & 7))) isInverted = !isInverted;
+            if (buffer->bitmap[character >> 3] & (1UL << (character & 7))) isInverted = !isInverted;
         } else {
             uint8_t value = buffer->bitmap[character >> 8];
             
@@ -400,7 +514,7 @@ CF_INLINE bool CFCharacterSetInlineBufferIsLongCharacterMember(CFCharacterSetInl
             } else if (value > 0) {
                 const uint8_t *segment = buffer->bitmap + (256 + (32 * (value - 1)));
                 character &= 0xFF;
-                if (segment[character >> 3] & (1 << (character % 8))) isInverted = !isInverted;
+                if (segment[character >> 3] & (1UL << (character % 8))) isInverted = !isInverted;
             }
         }
     }
@@ -411,12 +525,133 @@ CF_INLINE bool CFCharacterSetInlineBufferIsLongCharacterMember(CFCharacterSetInl
 #endif /* CF_INLINE */
 
 
-#if defined(__MACH__)
+#if TARGET_OS_WIN32
+CF_EXPORT CFMutableStringRef _CFCreateApplicationRepositoryPath(CFAllocatorRef alloc, int nFolder);
+#endif
+
+CF_EXPORT CFTypeRef _CFTryRetain(CFTypeRef cf);
+CF_EXPORT Boolean _CFIsDeallocating(CFTypeRef cf);
+
+/*
+ CFLocaleGetLanguageRegionEncodingForLocaleIdentifier gets the appropriate language and region codes,
+ and the default legacy script code and encoding, for the specified locale (or language) string.
+ Returns false if CFLocale has no information about the given locale; otherwise may set
+ *langCode and/or *regCode to -1 if there is no appropriate legacy value for the locale.
+ This is a replacement for the CFBundle SPI CFBundleGetLocalizationInfoForLocalization (which was intended to be temporary and transitional);
+ this function is more up-to-date in its handling of locale strings, and is in CFLocale where this functionality should belong. Compared
+ to CFBundleGetLocalizationInfoForLocalization, this function does not spcially interpret a NULL localeIdentifier to mean use the single most
+ preferred localization in the current context (this function returns NO for a NULL localeIdentifier); and in this function
+ langCode, regCode, and scriptCode are all SInt16* (not SInt32* like the equivalent parameters in CFBundleGetLocalizationInfoForLocalization).
+*/
+CF_EXPORT
+Boolean CFLocaleGetLanguageRegionEncodingForLocaleIdentifier(CFStringRef localeIdentifier, LangCode *langCode, RegionCode *regCode, ScriptCode *scriptCode, CFStringEncoding *stringEncoding);
+
+#if TARGET_OS_WIN32
+CF_EXPORT CFMutableStringRef _CFCreateApplicationRepositoryPath(CFAllocatorRef alloc, int nFolder);
+#endif
+
+#if TARGET_OS_WIN32
 #include <CoreFoundation/CFMessagePort.h>
 
-CFMessagePortRef CFMessagePortCreatePerProcessLocal(CFAllocatorRef allocator, CFStringRef name, CFMessagePortCallBack callout, CFMessagePortContext *context, Boolean *shouldFreeInfo);
-CFMessagePortRef CFMessagePortCreatePerProcessRemote(CFAllocatorRef allocator, CFStringRef name, CFIndex pid);
+#define CF_MESSAGE_PORT_CLONE_MESSAGE_ID -1209
+CF_EXPORT CFMessagePortRef	CFMessagePortCreateUber(CFAllocatorRef allocator, CFStringRef name, CFMessagePortCallBack callout, CFMessagePortContext *context, Boolean *shouldFreeInfo, Boolean isRemote);
+CF_EXPORT void CFMessagePortSetCloneCallout(CFMessagePortRef ms, CFMessagePortCallBack cloneCallout);
 #endif
+
+#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE || TARGET_OS_LINUX)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
+#include <CoreFoundation/CFMessagePort.h>
+
+CF_EXPORT CFMessagePortRef CFMessagePortCreatePerProcessLocal(CFAllocatorRef allocator, CFStringRef name, CFMessagePortCallBack callout, CFMessagePortContext *context, Boolean *shouldFreeInfo);
+CF_EXPORT CFMessagePortRef CFMessagePortCreatePerProcessRemote(CFAllocatorRef allocator, CFStringRef name, CFIndex pid);
+
+
+typedef CFDataRef (*CFMessagePortCallBackEx)(CFMessagePortRef local, SInt32 msgid, CFDataRef data, void *info, void *trailer, uintptr_t);
+
+CF_EXPORT CFMessagePortRef _CFMessagePortCreateLocalEx(CFAllocatorRef allocator, CFStringRef name, Boolean perPID, uintptr_t unused, CFMessagePortCallBackEx callout2, CFMessagePortContext *context, Boolean *shouldFreeInfo);
+
+#endif
+
+#if TARGET_OS_MAC || TARGET_OS_EMBEDDED || TARGET_OS_IPHONE || TARGET_OS_LINUX
+#include <pthread.h>
+#else
+// Avoid including the pthread header
+#ifndef HAVE_STRUCT_TIMESPEC
+#define HAVE_STRUCT_TIMESPEC 1
+struct timespec { long tv_sec; long tv_nsec; };
+#endif
+#endif
+
+CF_INLINE CFAbsoluteTime _CFAbsoluteTimeFromFileTimeSpec(struct timespec ts) {
+    return (CFAbsoluteTime)((CFTimeInterval)ts.tv_sec - kCFAbsoluteTimeIntervalSince1970) + (1.0e-9 * (CFTimeInterval)ts.tv_nsec);
+}
+
+CF_INLINE struct timespec _CFFileTimeSpecFromAbsoluteTime(CFAbsoluteTime at) {
+   struct timespec ts;
+   double sec = 0.0;
+   double frac = modf(at, &sec);
+   if (frac < 0.0) {
+       frac += 1.0;
+       sec -= 1.0;
+   }
+#if TARGET_OS_WIN32
+   ts.tv_sec = (long)(sec + kCFAbsoluteTimeIntervalSince1970);
+#else
+   ts.tv_sec = (time_t)(sec + kCFAbsoluteTimeIntervalSince1970);
+#endif
+   ts.tv_nsec = (long)(1000000000UL * frac + 0.5);
+   return ts;
+}
+
+// The 'filtered' function below is preferred to this older one
+CF_EXPORT bool _CFPropertyListCreateSingleValue(CFAllocatorRef allocator, CFDataRef data, CFOptionFlags option, CFStringRef keyPath, CFPropertyListRef *value, CFErrorRef *error);
+
+// Returns a subset of the property list, only including the keyPaths in the CFSet. If the top level object is not a dictionary, you will get back an empty dictionary as the result.
+CF_EXPORT bool _CFPropertyListCreateFiltered(CFAllocatorRef allocator, CFDataRef data, CFOptionFlags option, CFSetRef keyPaths, CFPropertyListRef *value, CFErrorRef *error) CF_AVAILABLE(10_8, 6_0);
+
+#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE) || TARGET_OS_WIN32
+
+// Returns a subset of a bundle's Info.plist. The keyPaths follow the same rules as above CFPropertyList function. This function takes platform and product keys into account.
+typedef CF_OPTIONS(CFOptionFlags, _CFBundleFilteredPlistOptions) {
+    _CFBundleFilteredPlistMemoryMapped = 1
+} CF_ENUM_AVAILABLE(10_8, 6_0);
+
+CF_EXPORT CFPropertyListRef _CFBundleCreateFilteredInfoPlist(CFBundleRef bundle, CFSetRef keyPaths, _CFBundleFilteredPlistOptions options) CF_AVAILABLE(10_8, 6_0);
+CF_EXPORT CFPropertyListRef _CFBundleCreateFilteredLocalizedInfoPlist(CFBundleRef bundle, CFSetRef keyPaths, CFStringRef localizationName, _CFBundleFilteredPlistOptions options) CF_AVAILABLE(10_8, 6_0);
+#endif
+
+#if TARGET_OS_WIN32
+#include <CoreFoundation/CFNotificationCenter.h>
+
+CF_EXPORT CFStringRef _CFGetWindowsAppleAppDataDirectory(void);
+CF_EXPORT CFArrayRef _CFGetWindowsBinaryDirectories(void);
+CF_EXPORT CFStringRef _CFGetWindowsAppleSystemLibraryDirectory(void);
+
+// If your Windows application does not use a CFRunLoop on the main thread (perhaps because it is reserved for handling UI events via Windows API), then call this function to make distributed notifications arrive using a different run loop.
+CF_EXPORT void _CFNotificationCenterSetRunLoop(CFNotificationCenterRef nc, CFRunLoopRef rl);
+
+CF_EXPORT uint32_t /*DWORD*/ _CFRunLoopGetWindowsMessageQueueMask(CFRunLoopRef rl, CFStringRef modeName);
+CF_EXPORT void _CFRunLoopSetWindowsMessageQueueMask(CFRunLoopRef rl, uint32_t /*DWORD*/ mask, CFStringRef modeName);
+
+CF_EXPORT uint32_t /*DWORD*/ _CFRunLoopGetWindowsThreadID(CFRunLoopRef rl);
+
+typedef void (*CFWindowsMessageQueueHandler)(void);
+
+// Run Loop parameter must be the current thread's run loop for the next two functions; you cannot use another thread's run loop
+CF_EXPORT CFWindowsMessageQueueHandler _CFRunLoopGetWindowsMessageQueueHandler(CFRunLoopRef rl, CFStringRef modeName);
+CF_EXPORT void _CFRunLoopSetWindowsMessageQueueHandler(CFRunLoopRef rl, CFStringRef modeName, CFWindowsMessageQueueHandler func);
+
+#endif
+
+
+CF_EXPORT CFArrayRef CFDateFormatterCreateDateFormatsFromTemplates(CFAllocatorRef allocator, CFArrayRef tmplates, CFOptionFlags options, CFLocaleRef locale);
+
+#if (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
+// Available for internal use on embedded
+CF_EXPORT CFNotificationCenterRef CFNotificationCenterGetDistributedCenter(void);
+#endif
+
+CF_EXPORT const CFStringRef kCFNumberFormatterUsesCharacterDirection CF_AVAILABLE(10_9, 6_0);	// CFBoolean
+CF_EXPORT const CFStringRef kCFDateFormatterUsesCharacterDirection CF_AVAILABLE(10_9, 6_0);	// CFBoolean
 
 
 CF_EXTERN_C_END

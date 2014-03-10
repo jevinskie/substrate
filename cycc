@@ -67,7 +67,7 @@ if [[ $# == 0 ]]; then
     exit 0
 fi
 
-gcc=g++
+gcc=clang++
 ios=
 mac=
 output=
@@ -124,7 +124,7 @@ if has substrate "${modes[@]}" && [[ -z ${mac} && -z ${ios} ]]; then
 fi
 
 if [[ -n ${mac} ]]; then
-    archs+=(i386 x86_64)
+    archs+=(x86_64)
 fi
 
 if [[ -n ${ios} ]]; then
@@ -336,9 +336,6 @@ function try() {
 function tool() {
     thin=$1
     type=$("${otool}" -vh "${thin}" | sed -e 's/  */ /g; s/^ *//; /^MH_/ p; d;' | cut -d ' ' -f 5)
-    if [[ ${type} == @(EXECUTE|DYLIB|BUNDLE) ]]; then
-        try "${ldid}" -S "${thin}"
-    fi
 }
 
 if [[ -n ${output} ]] || has silly "${modes[@]}"; then

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -20,8 +20,9 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
 /*	CFBundlePriv.h
-	Copyright (c) 1999-2007, Apple Inc.  All rights reserved.
+	Copyright (c) 1999-2013, Apple Inc.  All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFBUNDLEPRIV__)
@@ -108,6 +109,14 @@ const CFStringRef _kCFBundleOldTypeExtensions2Key;
 CF_EXPORT
 const CFStringRef _kCFBundleOldTypeOSTypesKey;
 
+/* For platform specification */
+CF_EXPORT
+const CFStringRef _kCFBundleSupportedPlatformsKey;
+
+/* For Code Signing */
+CF_EXPORT
+const CFStringRef _kCFBundleResourceSpecificationKey;
+
 
 /* Functions for examining directories that may "look like" bundles */
 
@@ -135,10 +144,26 @@ CFURLRef _CFBundleCopyMainBundleExecutableURL(Boolean *looksLikeBundle);
 CF_EXPORT
 CFBundleRef _CFBundleGetExistingBundleWithBundleURL(CFURLRef bundleURL);
 
+CF_EXPORT
+CFArrayRef _CFBundleGetSupportedPlatforms(CFBundleRef bundle);
+
+CF_EXPORT
+CFStringRef _CFBundleGetCurrentPlatform(void);
+
+
+/* For Code Signing */
+
+CF_EXPORT
+CFBundleRef _CFBundleCreateIfMightBeBundle(CFAllocatorRef allocator, CFURLRef url);
+
+CF_EXPORT
+CFBundleRef _CFBundleCreateWithExecutableURLIfMightBeBundle(CFAllocatorRef allocator, CFURLRef url);
+
+
 /* Functions for examining the structure of a bundle */
 
 CF_EXPORT
-CFURLRef _CFBundleCopyResourceForkURL(CFBundleRef bundle);
+CFURLRef _CFBundleCopyResourceForkURL(CFBundleRef bundle) CF_AVAILABLE_MAC(10_0);
 
 CF_EXPORT
 CFURLRef _CFBundleCopyInfoPlistURL(CFBundleRef bundle);
@@ -203,19 +228,25 @@ CF_EXPORT
 Boolean _CFBundleGetHasChanged(CFBundleRef bundle);
 
 CF_EXPORT
-void _CFBundleFlushCaches(void);
+void _CFBundleFlushCaches(void) CF_DEPRECATED(10_0, 10_8, 2_0, 6_0);
 
 CF_EXPORT
-void _CFBundleFlushCachesForURL(CFURLRef url);
+void _CFBundleFlushCachesForURL(CFURLRef url) CF_DEPRECATED(10_0, 10_8, 2_0, 6_0);
 
 CF_EXPORT
 void _CFBundleFlushBundleCaches(CFBundleRef bundle);    // The previous two functions flush cached resource paths; this one also flushes bundle-specific caches such as the info dictionary and strings files
+
+CF_EXPORT 
+CFArrayRef _CFBundleCopyAllBundles(void); // Pending publication, the only known client of this is PowerBox. Email david_smith@apple.com before using this.
 
 CF_EXPORT
 void _CFBundleSetStringsFilesShared(CFBundleRef bundle, Boolean flag);
 
 CF_EXPORT
 Boolean _CFBundleGetStringsFilesShared(CFBundleRef bundle);
+
+CF_EXPORT
+CFURLRef _CFBundleCopyFrameworkURLForExecutablePath(CFStringRef executablePath);
 
 
 /* Functions deprecated as SPI */
@@ -243,9 +274,6 @@ CFURLRef _CFBundleCopySharedSupportURL(CFBundleRef bundle);		// deprecated in fa
 
 CF_EXPORT
 CFURLRef _CFBundleCopyBuiltInPlugInsURL(CFBundleRef bundle);		// deprecated in favor of CFBundleCopyBuiltInPlugInsURL
-
-CF_EXPORT
-CFArrayRef _CFBundleCopyBundleRegionsArray(CFBundleRef bundle);		// deprecated in favor of CFBundleCopyBundleLocalizations
 
 CF_EXPORT
 CFURLRef _CFBundleCopyResourceURLForLanguage(CFBundleRef bundle, CFStringRef resourceName, CFStringRef resourceType, CFStringRef subDirName, CFStringRef language);	 // deprecated in favor of CFBundleCopyResourceURLForLocalization

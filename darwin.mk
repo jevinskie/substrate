@@ -17,8 +17,7 @@
 # along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 # }}}
 
-ios := -i2.0
-mac := -m10.5
+mac := -m10.8
 
 flags :=
 flags += -O2 -g0
@@ -30,20 +29,19 @@ flags += -fvisibility=hidden
 flags_Hooker := -Ihde64c/include
 flags_MachMessage := -Xarch_armv6 -marm
 
-hde64c := -Xarch_i386 hde64c/src/hde64.c -Xarch_x86_64 hde64c/src/hde64.c
+hde64c := hde64c/src/hde64.c
 lsubstrate := Debug.o Hooker.o MachMemory.o MachMessage.o hde64c/src/hde64.c
 
-framework := /Library/Frameworks/CydiaSubstrate.framework
+framework := $(PWD)/libsubstrate.dylib
 
-cycc = ./cycc $(ios) $(mac) -o$@ -- $(flags) $(filter %.o,$^) $(filter %.dylib,$^)
+cycc = ./cycc $(mac) -o$@ -- $(flags) $(filter %.o,$^) $(filter %.dylib,$^)
 
 all: darwin
 
 darwin: libsubstrate.dylib SubstrateBootstrap.dylib SubstrateLauncher.dylib SubstrateLoader.dylib cynject
-ios: darwin
 
 %.t.hpp: %.t.cpp trampoline.sh
-	./trampoline.sh $@ $*.dylib $* sed otool lipo nm ./cycc $(ios) $(mac) -o$*.dylib -- -dynamiclib $< -Iinclude -Xarch_armv6 -marm
+	./trampoline.sh $@ $*.dylib $* sed otool lipo nm ./cycc $(mac) -o$*.dylib -- -dynamiclib $< -Iinclude -Xarch_armv6 -marm
 
 MachProtect.c: MachProtect.defs MachInterface.sh
 	./MachInterface.sh $@ MachProtect.h $<
@@ -58,7 +56,7 @@ DarwinInjector.o: Trampoline.t.hpp
 	$(cycc) $(flags_$*) -c -Iinclude $<
 
 libsubstrate.dylib: DarwinFindSymbol.o DarwinInjector.o ObjectiveC.o $(lsubstrate)
-	$(cycc) -dynamiclib $(hde64c) -lobjc -install_name $(framework)/CydiaSubstrate
+	$(cycc) -dynamiclib $(hde64c) -lobjc -install_name $(framework)
 
 SubstrateBootstrap.dylib: Bootstrap.o
 	$(cycc) -dynamiclib
@@ -71,16 +69,15 @@ SubstrateLoader.dylib: DarwinLoader.o Environment.o
 
 cynject: cynject.o libsubstrate.dylib
 	$(cycc)
-	ldid -Stask_for_pid.xml $@
+	#ldid -Stask_for_pid.xml $@
 
 %: %.o
 	$(cycc) -framework CoreFoundation -framework Foundation
 
 extrainst_ postrm: LaunchDaemons.o Cydia.o
 
-deb: ios extrainst_ postrm
+deb: extrainst_ postrm
 	./package.sh i386
-	./package.sh arm
 
 package: deb
 
@@ -99,7 +96,6 @@ clean:
 TestSuperCall: libsubstrate.dylib
 
 test: TestSuperCall
-	arch -i386 ./TestSuperCall
 	arch -x86_64 ./TestSuperCall
 
-.PHONY: all clean darwin deb install ios test package upgrade
+.PHONY: all clean darwin deb install test package upgrade

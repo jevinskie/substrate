@@ -262,22 +262,25 @@ MSInitialize {
 
     // before we unload the previous version, we hook posix_spawn to call our replacements
     // the original posix_spawn (from Apple) is kept in _MSPosixSpawn for use by new versions
+    //
+    const char *cache;
+    char cache_tmp[32];
 
-    if (const char *cache = getenv("_MSPosixSpawn")) {
+
+    if (cache = getenv("_MSPosixSpawn")) {
         MSReinterpretAssign(_posix_spawn, strtoull(cache, NULL, 0));
         MSHookFunction(&posix_spawn, &$posix_spawn);
     } else {
         MSHookFunction(&posix_spawn, MSHake(posix_spawn));
 
-        char cache[32];
-        sprintf(cache, "%p", _posix_spawn);
-        setenv("_MSPosixSpawn", cache, false);
+        sprintf(cache_tmp, "%p", _posix_spawn);
+        setenv("_MSPosixSpawn", cache_tmp, false);
     }
 
 
     // specifically after having updated posix_spawn, we can unload the previous version
 
-    if (const char *cache = getenv("_MSLaunchHandle")) {
+    if (cache = getenv("_MSLaunchHandle")) {
         void *obsolete;
         MSReinterpretAssign(obsolete, strtoull(cache, NULL, 0));
         dlclose(obsolete);
@@ -286,8 +289,7 @@ MSInitialize {
 
     // as installation has completed, we now set _MSLaunchHandle to the address of this version
 
-    char cache[32];
-    sprintf(cache, "%p", handle);
+    sprintf(cache_tmp, "%p", handle);
     // XXX: there is a race condition installing new versions: need atomic get/setenv()
-    setenv("_MSLaunchHandle", cache, true);
+    setenv("_MSLaunchHandle", cache_tmp, true);
 }

@@ -124,7 +124,7 @@ if has substrate "${modes[@]}" && [[ -z ${mac} && -z ${ios} ]]; then
 fi
 
 if [[ -n ${mac} ]]; then
-    archs+=(x86_64)
+    archs+=(i386 x86_64)
 fi
 
 if [[ -n ${ios} ]]; then

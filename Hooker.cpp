@@ -718,6 +718,9 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
 
     size_t required(MSSizeOfJump(target, source));
 
+    if (MSDebug)
+        MSLog(MSLogLevelNotice, "MSHookFunction: required size %zu", required);
+
     if (MSDebug) {
         char name[16];
         sprintf(name, "%p", area);

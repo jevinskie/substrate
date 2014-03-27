@@ -66,7 +66,7 @@ for arch in $(echo "${detailed}" | "${sed}" -e '/^architecture / { s/^architectu
     filesize=${file[1]}
 
     echo
-    echo "static const char ${name}_${arch}_data_[] = {"
+    echo "static const unsigned char ${name}_${arch}_data_[] = {"
 
     od -v -t x1 -t c -j "$((offset + fileoff))" -N "${filesize}" "${object}" | "${sed}" -e '
         /^[0-7]/ ! {

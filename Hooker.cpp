@@ -727,6 +727,9 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
         MSLogHex(area, 32, name);
     }
 
+    // find out how many bytes we have to move for the instructions that may be overwritten
+    // remember that the end of the modified sequence may be within the middle of an instruction
+    // this will round up to consume the entire last instruction
     size_t used(0);
     while (used < required) {
         size_t width(MSGetInstructionWidthIntel(area + used));
@@ -738,6 +741,7 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
         used += width;
     }
 
+    // calculate size for nops
     size_t blank(used - required);
 
     if (MSDebug) {

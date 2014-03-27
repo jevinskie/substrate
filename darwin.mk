@@ -23,7 +23,7 @@ flags :=
 flags += -O0 -g -frtti -std=c++11 -stdlib=libc++
 
 flags += -isystem extra
-flags += -fno-exceptions
+#flags += -fno-exceptions
 flags += -fvisibility=hidden
 
 flags_Hooker := -Ihde64c/include

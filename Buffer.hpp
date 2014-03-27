@@ -27,19 +27,34 @@
 #include <typeinfo>
 #include <string>
 #include <boost/format.hpp>
+#include <cxxabi.h>
 
 template <typename Type_>
 _disused static _finline void MSWrite(uint8_t *&buffer, Type_ value) {
     *reinterpret_cast<Type_ *>(buffer) = value;
     uint8_t *old_buf = buffer;
     buffer += sizeof(Type_);
-    if (MSDebug)
-    	MSLogHex(buffer, sizeof(Type_), (std::string("MSWrite<") + typeid(Type_).name() + std::string(">")).c_str());
+    if (MSDebug) {
+    	char name_buf[4096];
+    	int status;
+    	const char *mangled = typeid(Type_).name();
+    	size_t size = sizeof(name_buf);
+    	char *demangled = __cxxabiv1::__cxa_demangle(mangled, name_buf, &size, &status);
+    	boost::format f("MSWrite<%1%> 0x%2$08x");
+    	f % demangled % (uint64_t)old_buf;
+    	MSLogHex(old_buf, sizeof(Type_), f.str().c_str());
+    }
 }
 
-_disused static _finline void MSWrite(uint8_t *&buffer, uint8_t *data, size_t size) {
+_disused static _finline void MSWrite(uint8_t *buffer, uint8_t *data, size_t size) {
     memcpy(buffer, data, size);
+    uint8_t *old_buf = buffer;
     buffer += size;
+    if (MSDebug) {
+    	boost::format f("MSWrite<%1%> 0x%2$08x");
+    	f % size % (uint64_t)old_buf;
+    	MSLogHex(old_buf, size, f.str().c_str());
+    }
 }
 
 #endif//SUBSTRATE_BUFFER_HPP

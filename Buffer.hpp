@@ -45,8 +45,7 @@ _disused static _finline void MSWrite(uint8_t *&buffer, Type_ value) {
     	MSLogHex(old_buf, sizeof(Type_), f.str().c_str());
     }
 }
-
-_disused static _finline void MSWrite(uint8_t *buffer, uint8_t *data, size_t size) {
+_disused static _finline void MSWrite(uint8_t *&buffer, uint8_t *data, size_t size) {
     memcpy(buffer, data, size);
     uint8_t *old_buf = buffer;
     buffer += size;

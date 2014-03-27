@@ -842,6 +842,9 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
     {
         uint8_t *current(buffer);
 
+        // debug break
+        //MSWrite<uint8_t>(current, 0xcc);
+
         for (size_t offset(0), width; offset != used; offset += width) {
             hde64s decode;
             hde64_disasm(backup + offset, &decode);
@@ -869,6 +872,7 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
                 if (relative == 0)
                     MSPushPointer(current, area + offset + decode.len);
                 else {
+                    // FIXME: 0xe8 is a rel8 jmp but MSSizeOfSkip calculated based off of a rel32 jmp
                     MSWrite<uint8_t>(current, 0xe8);
                     MSWrite<int32_t>(current, MSSizeOfSkip());
                     void *destiny(area + offset + decode.len + relative);
@@ -883,14 +887,28 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
                 MSWriteJump(current, area + offset + decode.len + *reinterpret_cast<int32_t *>(backup + offset + 1));
             } else if (decode.opcode == 0x74) {
                 // 0x74 == je rel8
-                //MSWriteJump(current, area + offset + decode.len + *reinterpret_cast<int8_t *>(&decode.imm.imm8));
+                void *destiny(area + offset + decode.len + *reinterpret_cast<int8_t *>(&decode.imm.imm8));
+                MSWrite<uint8_t>(current, 0x75); // jne rel8
+                MSWrite<int8_t>(current, MSSizeOfJump(current, destiny));
+                MSWriteJump(current, destiny);
             } else if (decode.opcode == 0x75) {
                 // 0x75 == jne rel8
-            } else if (decode.opcode == 0x0f && decode.opcode == 0x84) {
+                void *destiny(area + offset + decode.len + *reinterpret_cast<int8_t *>(&decode.imm.imm8));
+                MSWrite<uint8_t>(current, 0x74); // je rel8
+                MSWrite<int8_t>(current, MSSizeOfJump(current, destiny));
+                MSWriteJump(current, destiny);
+            } else if (decode.opcode == 0x0f && decode.opcode2 == 0x84) {
                 // 0x0f 0x84 == je rel32
-            } else if (decode.opcode == 0x0f && decode.opcode == 0x85) {
+                void *destiny(area + offset + decode.len + *reinterpret_cast<int32_t *>(&decode.imm.imm32));
+                MSWrite<uint8_t>(current, 0x75); // jne rel8
+                MSWrite<int8_t>(current, MSSizeOfJump(current, destiny));
+                MSWriteJump(current, destiny);
+            } else if (decode.opcode == 0x0f && decode.opcode2 == 0x85) {
                 // 0x0f 0x85 == jne rel32
-                //MSWriteJump(current, area + offset + decode.len + *reinterpret_cast<int8_t *>(&decode.imm.imm8));
+                void *destiny(area + offset + decode.len + *reinterpret_cast<int32_t *>(&decode.imm.imm32));
+                MSWrite<uint8_t>(current, 0x74); // je rel8
+                MSWrite<int8_t>(current, MSSizeOfJump(current, destiny));
+                MSWriteJump(current, destiny);
             } else if (
                 backup[offset] == 0xe3 ||           // 0xe3 = jrcxz rel8     Jump short if RCX register is 0.
                 (backup[offset] & 0xf0) == 0x70     // Jcc

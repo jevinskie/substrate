@@ -46,6 +46,10 @@ _disused static size_t MSSizeOfSkip() {
     return 5;
 }
 
+_disused static size_t MSSizeOfRel8Skip() {
+    return 2;
+}
+
 _disused static size_t MSSizeOfPushPointer(uintptr_t target) {
     return uint64_t(target) >> 32 == 0 ? 5 : 13;
 }

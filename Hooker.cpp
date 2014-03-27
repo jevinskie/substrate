@@ -756,11 +756,14 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
     if (result != NULL) {
 
     if (backup[0] == 0xe9) {
+        // 0xe9 = jmp rel32
+        // maybe FIXME? should this be int32_t?
         *result = reinterpret_cast<void *>(source + 5 + *reinterpret_cast<uint32_t *>(backup + 1));
         return;
     }
 
     if (!ia32 && backup[0] == 0xff && backup[1] == 0x25) {
+        // ljmpl   *(%rcx)
         *result = *reinterpret_cast<void **>(source + 6 + *reinterpret_cast<uint32_t *>(backup + 2));
         return;
     }
@@ -790,6 +793,7 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
 #endif
 
         if (backup[offset] == 0xe8) {
+            // 0xe8 = call rel32
             int32_t relative(*reinterpret_cast<int32_t *>(backup + offset + 1));
             void *destiny(area + offset + decode.len + relative);
 
@@ -801,14 +805,16 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
                 length += MSSizeOfJump(destiny);
             }
         } else if (backup[offset] == 0xeb) {
+            // 0xeb = jmp rel8
             length -= decode.len;
             length += MSSizeOfJump(area + offset + decode.len + *reinterpret_cast<int8_t *>(backup + offset + 1));
         } else if (backup[offset] == 0xe9) {
+            // 0xeb = jmp rel32
             length -= decode.len;
             length += MSSizeOfJump(area + offset + decode.len + *reinterpret_cast<int32_t *>(backup + offset + 1));
         } else if (
-            backup[offset] == 0xe3 ||
-            (backup[offset] & 0xf0) == 0x70
+            backup[offset] == 0xe3 ||          // 0xe3 = jrcxz rel8     Jump short if RCX register is 0.
+            (backup[offset] & 0xf0) == 0x70    // Jcc
             // XXX: opcode2 & 0xf0 is 0x80?
         ) {
             length += decode.len;
@@ -857,6 +863,7 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
 #endif
 
             if (backup[offset] == 0xe8) {
+                // 0xe8 = call rel32
                 int32_t relative(*reinterpret_cast<int32_t *>(backup + offset + 1));
                 if (relative == 0)
                     MSPushPointer(current, area + offset + decode.len);
@@ -867,13 +874,15 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
                     MSWriteSkip(current, MSSizeOfJump(destiny, current + MSSizeOfSkip()));
                     MSWriteJump(current, destiny);
                 }
-            } else if (backup[offset] == 0xeb)
+            } else if (backup[offset] == 0xeb) {
+                // 0xeb = jmp rel8
                 MSWriteJump(current, area + offset + decode.len + *reinterpret_cast<int8_t *>(backup + offset + 1));
-            else if (backup[offset] == 0xe9)
+            } else if (backup[offset] == 0xe9) {
+                // 0xeb = jmp rel32
                 MSWriteJump(current, area + offset + decode.len + *reinterpret_cast<int32_t *>(backup + offset + 1));
-            else if (
-                backup[offset] == 0xe3 ||
-                (backup[offset] & 0xf0) == 0x70
+            } else if (
+                backup[offset] == 0xe3 ||           // 0xe3 = jrcxz rel8     Jump short if RCX register is 0.
+                (backup[offset] & 0xf0) == 0x70     // Jcc
             ) {
                 MSWrite<uint8_t>(current, backup[offset]);
                 MSWrite<uint8_t>(current, 2);

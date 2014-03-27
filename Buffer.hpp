@@ -23,11 +23,18 @@
 #define SUBSTRATE_BUFFER_HPP
 
 #include <string.h>
+#include "Debug.hpp"
+#include <typeinfo>
+#include <string>
+#include <boost/format.hpp>
 
 template <typename Type_>
 _disused static _finline void MSWrite(uint8_t *&buffer, Type_ value) {
     *reinterpret_cast<Type_ *>(buffer) = value;
+    uint8_t *old_buf = buffer;
     buffer += sizeof(Type_);
+    if (MSDebug)
+    	MSLogHex(buffer, sizeof(Type_), (std::string("MSWrite<") + typeid(Type_).name() + std::string(">")).c_str());
 }
 
 _disused static _finline void MSWrite(uint8_t *&buffer, uint8_t *data, size_t size) {

@@ -20,7 +20,7 @@
 mac := -m10.8
 
 flags :=
-flags += -O0 -g
+flags += -O0 -g -frtti -std=c++11 -stdlib=libc++
 
 flags += -isystem extra
 flags += -fno-exceptions

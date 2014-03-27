@@ -83,6 +83,7 @@ _disused static void MSWriteSkip(uint8_t *&current, ssize_t size) {
 }
 
 _disused static void MSPushPointer(uint8_t *&current, uintptr_t target) {
+    //MSWrite<uint8_t>(current, 0xCC);
     MSWrite<uint8_t>(current, 0x68);
     MSWrite<uint32_t>(current, target);
 

@@ -822,8 +822,9 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
         }
     }
 
+    // FIXME: do more good length calculation
     uint8_t *buffer(reinterpret_cast<uint8_t *>(mmap(
-        NULL, length, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0
+        NULL, length + 243, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0
     )));
 
     if (buffer == MAP_FAILED) {
@@ -880,6 +881,16 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
             } else if (backup[offset] == 0xe9) {
                 // 0xeb = jmp rel32
                 MSWriteJump(current, area + offset + decode.len + *reinterpret_cast<int32_t *>(backup + offset + 1));
+            } else if (decode.opcode == 0x74) {
+                // 0x74 == je rel8
+                //MSWriteJump(current, area + offset + decode.len + *reinterpret_cast<int8_t *>(&decode.imm.imm8));
+            } else if (decode.opcode == 0x75) {
+                // 0x75 == jne rel8
+            } else if (decode.opcode == 0x0f && decode.opcode == 0x84) {
+                // 0x0f 0x84 == je rel32
+            } else if (decode.opcode == 0x0f && decode.opcode == 0x85) {
+                // 0x0f 0x85 == jne rel32
+                //MSWriteJump(current, area + offset + decode.len + *reinterpret_cast<int8_t *>(&decode.imm.imm8));
             } else if (
                 backup[offset] == 0xe3 ||           // 0xe3 = jrcxz rel8     Jump short if RCX register is 0.
                 (backup[offset] & 0xf0) == 0x70     // Jcc

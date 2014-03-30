@@ -823,8 +823,9 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
     }
 
     // FIXME: do more good length calculation
+    size_t mmap_len = length + 243;
     uint8_t *buffer(reinterpret_cast<uint8_t *>(mmap(
-        NULL, length + 243, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0
+        NULL, mmap_len, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0
     )));
 
     if (buffer == MAP_FAILED) {
@@ -834,10 +835,13 @@ static void SubstrateHookFunction(SubstrateProcessRef process, void *symbol, voi
     }
 
     if (false) fail: {
-        munmap(buffer, length);
+        munmap(buffer, mmap_len);
         *result = NULL;
         return;
     }
+
+    // HLT, will trigger ring0 permission exception
+    memset(buffer, 0xF4, mmap_len);
 
     {
         uint8_t *current(buffer);
